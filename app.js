@@ -11,15 +11,27 @@ var LocalStrategy = require('passport-local').Strategy;
 var mongo = require('mongodb');
 var mongoose = require('mongoose');
 
-//Connect to Database mongoose
-mongoose.connect('mongodb://localhost/loginapp');
-var db = mongoose.connection;
-
-var routes = require('./routes/index');
-var users = require('./routes/users');
 //Initial App
 var app = express();
-// View Engine
+
+// Load routes
+var routes = require('./routes/index');
+var users = require('./routes/users');
+
+//DB Config
+const db = require('./config/database');
+
+// Map global promise - get rid of warning
+mongoose.Promise = global.Promise;
+
+// Connect to mongoose
+mongoose.connect(db.mongoURI, {
+  useMongoClient: true
+})
+.then(() => console.log('MongoDB Connected...'))
+.catch(err => console.log(err));
+
+// View Engine (Handlebar Middleware)
 app.set('views', path.join(__dirname, 'views'));
 app.engine('handlebars', exphbs({defaultLayout:'layout'}));
 app.set('view engine', 'handlebars');
@@ -39,9 +51,21 @@ app.use(session({
 	resave: true
 }));
 
+//Connect Flash Middleware
+app.use(flash());
+
 //Passport Initialization
 app.use(passport.initialize());
 app.use(passport.session());
+
+//Global Vars
+app.use(function(req, res, next) {
+	res.locals.success_msg = req.flash('success_msg');
+	res.locals.error_msg = req.flash('error_msg');
+	res.locals.error = req.flash('error');
+	res.locals.user = req.user || null;
+	next();
+});
 
 //Express Validator
 app.use(expressValidator({
@@ -60,21 +84,6 @@ app.use(expressValidator({
 	    };
 	}
 }));
-
-//Connect Flash Middleware
-app.use(flash());
-
-//Global Vars
-app.use(function(req, res, next) {
-	res.locals.success_msg = req.flash('success_msg');
-	res.locals.error_msg = req.flash('error_msg');
-	res.locals.error = req.flash('error');
-	res.locals.user = req.user || null;
-	next();
-});
-
-
-
 
 app.use('/', routes);
 app.use('/users', users);
