@@ -1,4 +1,4 @@
 .DS_Store
 node_modules
-/config.database
+/config.database.js
 package.sublime-workspace
